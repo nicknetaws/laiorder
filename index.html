@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>老賴茶棧 團購點餐</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<style>
+:root{--bg:#f6f1e7;--card:#fff;--tx:#2b2418;--mu:#8a7f6d;--ac:#a8742a;--bd:#e7dfd0;--on:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1d1a15;--card:#292519;--tx:#f1eadb;--mu:#a69b86;--ac:#d9a34e;--bd:#3b3626;--on:#1d1a15}}
+:root[data-theme="dark"]{--bg:#1d1a15;--card:#292519;--tx:#f1eadb;--mu:#a69b86;--ac:#d9a34e;--bd:#3b3626;--on:#1d1a15}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--tx);font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px}
+.mu{color:var(--mu)}.ac{color:var(--ac)}
+.btn{background:var(--ac);color:var(--on);border-radius:12px;font-weight:700;padding:.7rem 1rem}
+.btn2{border:1px solid var(--bd);border-radius:12px;padding:.55rem .9rem;font-size:.9rem;background:var(--card)}
+.opt{border:1px solid var(--bd);border-radius:999px;padding:.35rem .8rem;font-size:.9rem;background:var(--card)}
+.opt.on{background:var(--ac);color:var(--on);border-color:var(--ac)}
+.opt.off{opacity:.35;pointer-events:none}
+input,textarea{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:.6rem .8rem;width:100%;color:var(--tx);font-size:16px}
+.chips{display:flex;gap:.5rem;overflow-x:auto;padding:.5rem 1rem;scrollbar-width:none}
+.chips .opt{white-space:nowrap;flex:none}
+#ov{background:rgba(0,0,0,.45)}
+.sheet{background:var(--bg);border-radius:20px 20px 0 0;max-height:90%;overflow-y:auto;padding:1rem 1rem calc(1rem + env(safe-area-inset-bottom,0px))}
+</style>
+</head>
+<body>
+<header class="px-4 pt-5 pb-2">
+  <h1 class="text-xl font-bold">🍵 老賴茶棧 團購點餐</h1>
+  <p class="text-sm mu mt-1">選品項 → 選冰量甜度加料 → 產生 LINE 訂單</p>
+</header>
+
+<section class="card mx-4 mt-2 p-4 grid grid-cols-2 gap-3">
+  <label class="text-sm">團體編號 *<input id="grp" placeholder="例：A01" class="mt-1"></label>
+  <label class="text-sm">訂購人姓名 *<input id="nm" placeholder="例：小明" class="mt-1"></label>
+</section>
+
+<div id="chips" class="chips mt-2"></div>
+<main id="list" class="px-4 grid gap-3"></main>
+<p class="px-4 mt-4 text-xs mu leading-relaxed">※熱飲為冬季限定；瓶裝皆為冷飲且無法加料。檸檬系列、烏梅紅茶可加厚一份 +5。價格依 2023.07.03 版菜單，請以現場為準。自備環保杯折 5 元（現場結帳）。</p>
+
+<section id="hist" class="card mx-4 mt-6 p-4"></section>
+
+<div class="fixed left-0 right-0 bottom-0 px-4 pt-3" style="background:var(--bg);border-top:1px solid var(--bd);padding-bottom:calc(.75rem + env(safe-area-inset-bottom,0px))">
+  <button class="btn w-full flex justify-between" onclick="openCart()"><span id="bc">🛒 0 杯</span><span id="bt">$0</span></button>
+</div>
+
+<div id="ov" class="fixed inset-0 hidden items-end z-50" onclick="if(event.target===this)closeOv()"><div id="sh" class="sheet w-full"></div></div>
+
+<script>
+const M=[
+['老賴招牌',[['老賴紅茶',30,100,''],['豆香紅茶',50,160,'s'],['太后牛乳',60,190,'t'],['珍珠紅茶',40,0,''],['珍珠奶茶',50,0,'m'],['烏梅紅茶',50,160,'l'],['冬瓜檸檬',50,160,'lf'],['青草紅茶',50,160,'nf']]],
+['醇原茶',[['四季青茶',30,0,''],['茉翠香綠',30,0,''],['青霧綠茶',30,100,'']]],
+['醇奶茶',[['招牌奶茶',50,160,'m'],['胚芽奶茶',60,0,'m'],['布丁奶茶',60,0,'m'],['椰果奶茶',60,0,'m'],['香綠奶茶',50,0,'m'],['珍珠綠奶',50,0,'m'],['布丁綠奶',60,0,'m'],['珍珠胚芽奶茶',60,0,'m'],['珍珠布丁奶茶',65,0,'m']]],
+['醇古早',[['手工豆漿',50,160,'s'],['熬煮青草茶',50,160,'nf']]],
+['醇烏龍',[['文清烏龍',35,115,''],['文清冬瓜',35,115,''],['文清檸檬',50,160,'l'],['文清阿梅',55,175,''],['文清樂多',55,0,'n']]],
+['醇冬瓜',[['熬煮冬瓜茶',35,115,'f'],['冬瓜紅茶',35,115,''],['冬瓜青霧',35,115,''],['冬瓜香茶',35,0,''],['冬瓜香綠',35,0,''],['愛玉冬瓜檸檬',60,0,'lf']]],
+['醇太后',[['太后冬瓜奶',60,190,'tf'],['太后香綠奶',60,0,'t'],['珍珠太后牛乳',65,0,'t'],['布丁太后牛乳',70,0,'t']]],
+['醇茶調飲',[['青檸紅茶／青霧綠',50,160,'l'],['青檸香綠／青',50,0,'l'],['玉檸香綠',60,0,'ln'],['樂多香綠／青',55,0,'n']]],
+['醇芝麻',[['黑芝麻豆漿',60,0,'ns'],['黑芝麻奶茶',60,0,'nm'],['黑芝麻珍珠奶茶',65,0,'nm'],['黑芝麻胚芽奶茶',70,0,'nm'],['黑芝麻太后牛乳',75,0,'nt'],['黑芝麻珍珠太后牛乳',80,0,'nt']]]
+];
+const ITEMS=[];M.forEach(([c,a])=>a.forEach(x=>ITEMS.push({id:ITEMS.length,cat:c,name:x[0],p:x[1],b:x[2],f:x[3]})));
+const ICE=['完全去冰','去冰','微冰','少冰','正常冰','熱飲'],SUG=['無糖','一分糖','微糖','半糖','正常糖'];
+const TOP={珍珠:10,茶凍:10,胚芽:10,椰果:10,愛玉:10,布丁:15};
+let cat=M[0][0],cart=[],S=null,recs=[],msg='';
+const $=id=>document.getElementById(id);
+const sv=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},ld=k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}};
+try{recs=JSON.parse(ld('recs')||'[]')}catch(e){recs=[]}
+$('grp').value=ld('grp');$('nm').value=ld('nm');
+$('grp').oninput=e=>sv('grp',e.target.value);$('nm').oninput=e=>sv('nm',e.target.value);
+
+function topOk(t,it,size,ice){
+  if(size==='瓶'||/[nx]/.test(it.f))return false;
+  const hot=ice==='熱飲',milk=/[mts]/.test(it.f);
+  if(t==='珍珠'||t==='茶凍')return !hot;
+  if(t==='胚芽')return milk;
+  if(t==='椰果')return !it.f.includes('s');
+  if(t==='愛玉')return !hot&&!milk;
+  if(t==='布丁')return !it.f.includes('l');
+}
+function unit(o){const it=ITEMS[o.id];return (o.size==='瓶'?it.b:it.p)+o.tops.reduce((s,t)=>s+TOP[t],0)+(o.thick?5:0)}
+function total(){return cart.reduce((s,o)=>s+unit(o)*o.qty,0)}
+function cnt(){return cart.reduce((s,o)=>s+o.qty,0)}
+function spec(o){const it=ITEMS[o.id];return [o.size==='瓶'?'瓶2000ml':'杯660ml',o.size==='瓶'?'冷飲':o.ice,it.f.includes('f')?'甜度固定':o.sugar,o.tops.length?'加'+o.tops.join('+'):'',o.thick?'加厚':''].filter(Boolean).join(' / ')}
+
+function render(){
+  $('chips').innerHTML=M.map(([c])=>`<button class="opt ${c===cat?'on':''}" onclick="cat='${c}';render()">${c}</button>`).join('');
+  $('list').innerHTML=ITEMS.filter(i=>i.cat===cat).map(i=>`<button class="card p-4 text-left flex justify-between items-center" onclick="pick(${i.id})"><div><div class="font-bold">${i.name}</div><div class="text-xs mu mt-1">${i.f.includes('f')?'甜度固定 · ':''}${i.f.includes('n')?'不可加料':'可加料'}${i.b?' · 有瓶裝':''}</div></div><div class="text-right"><div class="ac font-bold">$${i.p}</div>${i.b?`<div class="text-xs mu">瓶 $${i.b}</div>`:''}</div></button>`).join('');
+  $('bc').textContent=`🛒 ${cnt()} 杯`;$('bt').textContent='$'+total();
+  renderHist();
+}
+function pick(id){const it=ITEMS[id];S={id,size:'杯',ice:'少冰',sugar:'微糖',tops:[],thick:false,qty:1};showSheet()}
+function showOv(h){$('sh').innerHTML=h;$('ov').classList.remove('hidden');$('ov').classList.add('flex')}
+function closeOv(){$('ov').classList.add('hidden');$('ov').classList.remove('flex')}
+function opts(arr,cur,fn,dis){return arr.map(a=>`<button class="opt ${a===cur?'on':''}" onclick="${fn}('${a}')">${a}</button>`).join(' ')}
+function showSheet(){
+  const it=ITEMS[S.id],bt=S.size==='瓶';
+  S.tops=S.tops.filter(t=>topOk(t,it,S.size,S.ice));
+  if(S.thick&&!it.f.includes('l')&&it.name!=='烏梅紅茶')S.thick=false;
+  const fixed=it.f.includes('f');
+  showOv(`<div class="flex justify-between items-start"><div><div class="text-lg font-bold">${it.name}</div><div class="text-sm mu">${it.cat}</div></div><button class="mu text-2xl" onclick="closeOv()">✕</button></div>
+  ${it.b?`<h3 class="font-bold mt-4 mb-2">規格</h3><div class="flex gap-2"><button class="opt ${!bt?'on':''}" onclick="S.size='杯';showSheet()">杯 660ml $${it.p}</button><button class="opt ${bt?'on':''}" onclick="S.size='瓶';S.tops=[];showSheet()">瓶 2000ml $${it.b}</button></div>`:''}
+  ${bt?'<p class="text-sm mu mt-4">瓶裝為冷飲，無法加料。</p>':`<h3 class="font-bold mt-4 mb-2">冰量</h3><div class="flex flex-wrap gap-2">${ICE.filter(i=>i!=='熱飲'||!/l/.test(it.f)).map(i=>`<button class="opt ${i===S.ice?'on':''}" onclick="S.ice='${i}';showSheet()">${i}</button>`).join('')}</div>`}
+  <h3 class="font-bold mt-4 mb-2">甜度</h3>${fixed?'<p class="text-sm mu">此品項甜度固定</p>':`<div class="flex flex-wrap gap-2">${SUG.map(i=>`<button class="opt ${i===S.sugar?'on':''}" onclick="S.sugar='${i}';showSheet()">${i}</button>`).join('')}</div>`}
+  ${!bt&&!/[nx]/.test(it.f)?`<h3 class="font-bold mt-4 mb-2">加料</h3><div class="flex flex-wrap gap-2">${Object.keys(TOP).map(t=>`<button class="opt ${S.tops.includes(t)?'on':''} ${topOk(t,it,S.size,S.ice)?'':'off'}" onclick="tg('${t}')">${t} +${TOP[t]}</button>`).join('')}</div>`:''}
+  ${(it.f.includes('l')||it.name==='烏梅紅茶')&&!bt?`<div class="mt-3"><button class="opt ${S.thick?'on':''}" onclick="S.thick=!S.thick;showSheet()">加厚一份 +5</button></div>`:''}
+  <div class="flex items-center justify-between mt-5"><div class="flex items-center gap-3"><button class="btn2 w-10" onclick="S.qty=Math.max(1,S.qty-1);showSheet()">−</button><b>${S.qty}</b><button class="btn2 w-10" onclick="S.qty++;showSheet()">＋</button></div><button class="btn" onclick="addCart()">加入 $${unit(S)*S.qty}</button></div>`);
+}
+function tg(t){const i=S.tops.indexOf(t);i<0?S.tops.push(t):S.tops.splice(i,1);showSheet()}
+function addCart(){
+  const it=ITEMS[S.id],o={...S,tops:[...S.tops].sort()};
+  if(o.size==='瓶')o.ice='冷飲';if(it.f.includes('f'))o.sugar='固定';
+  const k=JSON.stringify({...o,qty:0}),e=cart.find(c=>JSON.stringify({...c,qty:0})===k);
+  e?e.qty+=o.qty:cart.push(o);closeOv();render();
+}
+function openCart(){
+  if(!cart.length){showOv('<p class="text-center mu py-8">還沒有選任何飲料 🥤</p>');return}
+  showOv(`<div class="flex justify-between"><h2 class="text-lg font-bold">我的訂單</h2><button class="mu text-2xl" onclick="closeOv()">✕</button></div>
+  <div class="grid gap-2 mt-3">${cart.map((o,i)=>`<div class="card p-3"><div class="flex justify-between"><b>${ITEMS[o.id].name}</b><span class="ac font-bold">$${unit(o)*o.qty}</span></div><div class="text-xs mu mt-1">${spec(o)}</div><div class="flex items-center gap-3 mt-2"><button class="btn2 w-9" onclick="cq(${i},-1)">−</button><b>${o.qty}</b><button class="btn2 w-9" onclick="cq(${i},1)">＋</button><button class="mu text-sm ml-auto" onclick="cart.splice(${i},1);render();openCart()">刪除</button></div></div>`).join('')}</div>
+  <div class="flex justify-between text-lg font-bold mt-4"><span>${cnt()} 杯</span><span class="ac">總金額 $${total()}</span></div>
+  <button class="btn w-full mt-3" onclick="submitOrder()">產生 LINE 訂購訊息</button>
+  <div id="out" class="mt-3"></div>`);
+}
+function cq(i,d){cart[i].qty+=d;if(cart[i].qty<1)cart.splice(i,1);render();openCart()}
+function submitOrder(){
+  const g=$('grp').value.trim(),n=$('nm').value.trim();
+  if(!g||!n){closeOv();alert('請先填寫團體編號與訂購人姓名');$('grp').focus();return}
+  const t=new Date();
+  const ts=t.getFullYear()+'/'+(t.getMonth()+1)+'/'+t.getDate()+' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+  msg=`🍵【老賴茶棧團購】\n團體編號：${g}\n訂購人：${n}\n時間：${ts}\n━━━━━━━━\n`+cart.map((o,i)=>`${i+1}. ${ITEMS[o.id].name}\n   ${spec(o)}\n   $${unit(o)} x ${o.qty} = $${unit(o)*o.qty}`).join('\n')+`\n━━━━━━━━\n共 ${cnt()} 杯，總金額 $${total()}`;
+  const rows=cart.map(o=>{const it=ITEMS[o.id];return [ts,g,n,it.name,o.size==='瓶'?'瓶':'杯',o.size==='瓶'?'冷飲':o.ice,it.f.includes('f')?'固定':o.sugar,o.tops.join('+')+(o.thick?(o.tops.length?'+':'')+'加厚':''),o.qty,unit(o),unit(o)*o.qty]});
+  recs=recs.concat(rows);sv('recs',JSON.stringify(recs));renderHist();
+  const u=ld('sheetUrl');
+  if(u){fetch(u,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(rows)}).then(()=>{$('sts')&&($('sts').textContent='✅ 已送出至 Google 試算表')}).catch(()=>{$('sts')&&($('sts').textContent='⚠️ 試算表送出失敗')})}
+  $('out').innerHTML=`<textarea id="mt" rows="10" readonly>${msg}</textarea><div class="grid grid-cols-2 gap-2 mt-2"><button class="btn2" onclick="cp(msg,this)">複製訊息</button><a class="btn text-center" target="_blank" href="https://line.me/R/msg/text/?${encodeURIComponent(msg)}">傳到 LINE</a></div><p id="sts" class="text-xs mu mt-2">已記錄 ${rows.length} 筆到點餐紀錄${u?'，正在送出至試算表…':''}</p>`;
+}
+async function cp(s,b){try{await navigator.clipboard.writeText(s)}catch(e){const m=$('mt');if(m){m.select();document.execCommand('copy')}}const o=b.textContent;b.textContent='已複製 ✓';setTimeout(()=>b.textContent=o,1500)}
+const HEAD=['時間','團體編號','姓名','品項','規格','冰量','甜度','加料','數量','單價','小計'];
+function csv(){const q=v=>'"'+String(v).replace(/"/g,'""')+'"';return '\ufeff'+[HEAD].concat(recs).map(r=>r.map(q).join(',')).join('\r\n')}
+function dl(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv()],{type:'text/csv;charset=utf-8'}));a.download='老賴茶棧團購紀錄.csv';a.click()}
+function renderHist(){
+  $('hist').innerHTML=`<h2 class="font-bold">📊 點餐紀錄 <span class="text-sm mu font-normal">（${recs.length} 筆）</span></h2>
+  <p class="text-xs mu mt-1">每次產生訂單會記錄在本機，可匯出給 Excel 開啟，或自動寫入 Google 試算表。</p>
+  <div class="grid grid-cols-2 gap-2 mt-3"><button class="btn2" onclick="dl()">下載 CSV (Excel)</button><button class="btn2" onclick="cp([HEAD].concat(recs).map(r=>r.join('\\t')).join('\\n'),this)">複製貼到 Excel</button></div>
+  <label class="text-xs mu block mt-3">Google 試算表網址（Apps Script Web App URL，選填）<input id="su" class="mt-1" placeholder="https://script.google.com/macros/s/.../exec" value="${ld('sheetUrl')}" onchange="sv('sheetUrl',this.value.trim())"></label>
+  <details class="mt-3 text-xs mu"><summary>如何串接 Google 試算表？</summary><ol class="list-decimal ml-4 mt-2 leading-relaxed"><li>建立 Google 試算表 → 擴充功能 → Apps Script</li><li>貼上：<code class="block p-2 mt-1 rounded" style="background:var(--bg)">function doPost(e){var s=SpreadsheetApp.getActiveSheet();JSON.parse(e.postData.contents).forEach(function(r){s.appendRow(r)});return ContentService.createTextOutput('ok')}</code></li><li>部署 → 網頁應用程式 → 存取權「任何人」→ 複製網址貼到上方</li></ol></details>
+  ${recs.length?`<button class="text-xs mu mt-3 underline" onclick="if(confirm('確定清除所有紀錄？')){recs=[];sv('recs','[]');renderHist()}">清除紀錄</button>`:''}`;
+}
+render();
+</script>
+</body>
+</html>
